@@ -1,0 +1,25 @@
+[project]
+name = "spot-it-sort-it"
+version = "0.1.0"
+description = "Spot it, sort it: Anomalib + VLM defect detection and robotic sorting on Intel NUC via OpenVINO"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anomalib[cpu,openvino]>=2.7",
+    "openvino>=2025.0",
+    "openvino-genai>=2025.0",
+    "opencv-python-headless>=4.9",
+    "numpy",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+# Only needed to convert a Hugging Face VLM to OpenVINO IR (one-off, can run on the dev laptop)
+export = ["optimum-intel[openvino]>=1.20", "nncf>=2.10"]
+
+[project.scripts]
+spotsort = "spot_it_sort_it.pipeline:main"
+
+[build-system]
+requires = ["uv_build>=0.10.4,<0.11.0"]
+build-backend = "uv_build"

@@ -1,0 +1,30 @@
+# Runtime config. Override any value with --set key.sub=value on the CLI.
+camera:
+  source: 0                # webcam index, RTSP URL, or a folder of images to replay
+  width: 1280
+  height: 720
+
+detector:
+  model_xml: models/anomaly/weights/openvino/model.xml
+  device: NPU              # NPU -> GPU -> CPU fallback is automatic
+  threshold: null          # null = use the threshold Anomalib baked into the export
+  borderline_margin: 0.10  # scores within ±margin of threshold get a VLM second opinion
+
+decider:
+  enabled: true
+  model_dir: models/vlm/qwen2.5-vl-3b-int4
+  device: GPU
+  max_new_tokens: 96
+  # Revealed at the event: fill in the defect classes and what to do with each.
+  scenario: |
+    Items on the conveyor are inspected for manufacturing defects.
+  actions: [accept, reject, rework, alert_operator]
+
+arm:
+  driver: mock             # mock | <real driver name once the arm SDK is known>
+  good_bin: box
+  reject_bin: reject
+
+log:
+  csv: runs/decisions.csv
+  save_frames: true

@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+# large / generated — share models via releases or a drive link, not git
+models/
+data/*
+!data/README.md
+runs/
+results/
+lightning_logs/
+*.ckpt
+openvino_cache/
