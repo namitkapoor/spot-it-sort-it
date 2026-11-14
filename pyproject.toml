@@ -11,6 +11,7 @@ dependencies = [
     "opencv-python-headless>=4.9",
     "numpy",
     "pyyaml",
+    "viam-sdk>=0.85.2",
 ]
 
 [project.optional-dependencies]

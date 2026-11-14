@@ -47,6 +47,36 @@ uv run spotsort --source data/synthetic_washer
 | `src/spot_it_sort_it/pipeline.py` | Main loop and per-stage latency logging |
 | `scripts/` | train/export, VLM export, benchmark, synthetic data |
 
+## On the Viam machine (what actually runs for judging)
+
+| Piece | Where | What |
+|-|-|-|
+| `ov` + `vision-1` | Viam registry modules | PatchCore (our `sortit-patchcore` model) on the iGPU, frame-level anomalous/normal |
+| `objects` | `viam_module/` (local module `sortit:vision:objects`) | One box per part, each labelled normal / hold / anomalous; per-item log |
+| `mlmodel-2` + `vision-2` | registry `viam:openvino:mlmodel` | YOLOv8n-cls (`sortit-yolocls`) on the NPU — measured, not used to decide |
+
+`objects` DoCommands (call through the Viam SDK, CLI or MCP):
+
+```
+{"command": "new_run"}                start a fresh item log (right before the judged run)
+{"command": "decide", "frames": 3}    score parts, LOG each new item, return new + pending items
+{"command": "next"}                   oldest logged item not yet picked: centre pixel + destination bin
+{"command": "arm_start", "item": N}   record first arm motion for item N (latency)
+{"command": "log"}                    the run's log; the CSV lives on the NUC under the module data dir
+```
+
+Deploy changes to the module: `viam machines part cp --part=<part> -r -p viam_module machine:/root/`, then
+`uv run python tools/viam_config.py bump-objects-module` to restart it.
+
+## Tools
+| Tool | What |
+|-|-|
+| `tools/capture_station.py` | LAN page: capture buttons + shared shot checklist + camera previews; tags frames and adds them to the dataset |
+| `tools/viam_config.py` | Back up / patch / restore the machine config with the Viam CLI login (`backup`, `pin <pkg> <ver>`, `restore <file>`, …) |
+| `scripts/score_frames.py` | Score images locally with a downloaded Anomalib OpenVINO export |
+
+Design, measurements and what failed: [docs/DESIGN.md](docs/DESIGN.md).
+
 ## Licenses
 
-Anomalib is Apache-2.0. Check the license of the VLM you pick before you publish weights.
+Anomalib is Apache-2.0. Trained weights are not committed (models/ is git-ignored); the YOLO classifier was trained with Ultralytics (AGPL-3.0) and is kept out of this repo.

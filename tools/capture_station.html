@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capture Station</title>
+<style>
+  :root { --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --muted:#6b6a66; --line:#e3e1dc;
+          --good:#1f7a4d; --good-bg:#e5f3ea; --bad:#b4372a; --bad-bg:#f8e6e3; --warn:#9a6a00; --warn-bg:#fbf1d9; --accent:#2d5bd7; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141413; --card:#1e1e1c; --ink:#ecebe7; --muted:#9b9a95; --line:#33322f;
+            --good:#5fc28f; --good-bg:#1c3326; --bad:#ec7d70; --bad-bg:#3a1f1b; --warn:#e3b341; --warn-bg:#3a2f12; --accent:#7c9cf2; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui, -apple-system, sans-serif; }
+  main { max-width:1040px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 18px; }
+  .grid { display:grid; grid-template-columns: 1fr 1.3fr; gap:16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .card h2 { font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px; }
+  .totals { display:flex; gap:10px; margin-bottom:12px; }
+  .pill { flex:1; border-radius:10px; padding:10px; }
+  .pill b { display:block; font-size:24px; }
+  .pill.g { background:var(--good-bg); color:var(--good); } .pill.d { background:var(--bad-bg); color:var(--bad); }
+  .feeds { display:grid; gap:10px; }
+  .feeds figure { margin:0; }
+  figcaption { font-size:12px; color:var(--muted); margin-top:4px; }
+  .snap { width:100%; aspect-ratio:4/3; background:var(--line); border-radius:8px; object-fit:cover; display:block; }
+  button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:8px; padding:7px 12px; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .row { display:grid; grid-template-columns: 52px 1fr auto auto; gap:10px; align-items:center; padding:9px 0; border-top:1px solid var(--line); }
+  .row:first-child { border-top:0; }
+  .id { font-weight:600; } .id.g { color:var(--good); } .id.d { color:var(--bad); }
+  .desc small { display:block; color:var(--muted); }
+  .st { font-size:12px; padding:3px 8px; border-radius:99px; white-space:nowrap; }
+  .st.todo { background:var(--line); color:var(--muted); } .st.done { background:var(--good-bg); color:var(--good); }
+  .st.capturing, .st.syncing { background:var(--warn-bg); color:var(--warn); } .st.check { background:var(--bad-bg); color:var(--bad); }
+  .rules { margin:0; padding-left:18px; color:var(--muted); }
+  .log { font:12px/1.5 ui-monospace, Menlo, monospace; color:var(--muted); max-height:180px; overflow:auto; white-space:pre-wrap; }
+  .who { width:100%; font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); margin-bottom:10px; }
+  .add { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .add input { flex:1; min-width:140px; font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); }
+  .add select { font:inherit; padding:7px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Capture Station</h1>
+  <p class="sub">armfarm01 · wrist <code>cam</code> at <code>inspect-pose</code> · gripper <b>open</b> · dataset <code id="tag"></code></p>
+  <div class="grid">
+    <section>
+      <div class="card">
+        <h2>Training frames</h2>
+        <div class="totals">
+          <div class="pill g"><b id="tn">0</b>normal (target 40+)</div>
+          <div class="pill d"><b id="ta">0</b>anomalous (target 15+)</div>
+        </div>
+        <div class="feeds">
+          <figure><img id="snap-cam" class="snap" alt="Wrist camera"><figcaption>cam · wrist RealSense (training + inspection)</figcaption></figure>
+          <figure><img id="snap-overview-cam" class="snap" alt="Overview camera"><figcaption>overview-cam · stand webcam</figcaption></figure>
+        </div>
+        <p style="display:flex;gap:8px;margin:10px 0 0;flex-wrap:wrap;align-items:center">
+          <button id="prev">Refresh now</button>
+          <label style="display:flex;gap:6px;align-items:center;color:var(--muted)"><input type="checkbox" id="live"> Live (every 6 s — leave off unless you need it)</label>
+          <span id="busy" style="color:var(--warn)"></span></p>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>Before each shot</h2>
+        <ol class="rules">
+          <li>Arm at <b>inspect-pose</b>, gripper stays open.</li>
+          <li>Place the part(s), then hands and shadows out of view.</li>
+          <li>Refresh the preview, check it, then press Capture.</li>
+          <li>Whole frame is one label: any defect in view → anomalous.</li>
+        </ol>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>Activity</h2>
+        <div id="log" class="log"></div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Shot checklist</h2>
+      <input id="who" class="who" placeholder="Your name (shown in the log)">
+      <div id="shots"></div>
+      <div class="add">
+        <select id="nl"><option value="normal">normal</option><option value="anomalous">anomalous</option></select>
+        <input id="nd" placeholder="Add a shot: what to place">
+        <button id="addb">Add</button>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+const code = new URLSearchParams(location.search).get('code') || '';
+const q = p => p + (code ? (p.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(code) : '');
+const who = document.getElementById('who');
+try { who.value = localStorage.getItem('who') || ''; } catch {}
+who.onchange = () => { try { localStorage.setItem('who', who.value); } catch {} };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function post(path, body) {
+  const r = await fetch(q(path), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (!r.ok) alert((await r.json().catch(() => ({}))).error || r.statusText);
+}
+function render(s) {
+  document.getElementById('tag').textContent = s.run_tag;
+  document.getElementById('tn').textContent = s.totals.normal;
+  document.getElementById('ta').textContent = s.totals.anomalous;
+  document.getElementById('busy').textContent = s.busy ? `Capturing ${s.busy}…` : '';
+  document.getElementById('log').textContent = s.log.join('\n');
+  document.getElementById('shots').innerHTML = s.shots.map(x => {
+    const cls = x.label === 'normal' ? 'g' : 'd';
+    const meta = x.status === 'done' ? `${x.frames} frames · ${x.tag}${x.by ? ' · ' + x.by : ''}` : x.label;
+    const stuck = ['check', 'capturing', 'syncing'].includes(x.status) && s.busy !== x.id;
+    const btn = stuck ? 'Reset' : x.status === 'done' ? 'Again' : 'Capture';
+    const act = stuck ? 'reset' : 'capture';
+    return `<div class="row"><span class="id ${cls}">${esc(x.id)}</span>
+      <span class="desc">${esc(x.desc)}<small>${esc(meta)}</small></span>
+      <span class="st ${esc(x.status)}">${esc(x.status)}</span>
+      <button class="${x.status === 'todo' ? 'primary' : ''}" data-id="${esc(x.id)}" data-act="${act}" ${s.busy ? 'disabled' : ''}>${btn}</button></div>`;
+  }).join('');
+  document.querySelectorAll('#shots button').forEach(b => b.onclick = () => post('/' + b.dataset.act, { id: b.dataset.id, who: who.value }).then(tick));
+}
+async function tick() { try { render(await (await fetch(q('/state'))).json()); } catch {} }
+const inflight = {};
+function load(cam) {  // swap the image only once the new frame has arrived, so the feed doesn't flicker
+  if (inflight[cam]) return; inflight[cam] = true;
+  const img = new Image();
+  img.onload = () => { document.getElementById('snap-' + cam).src = img.src; inflight[cam] = false; };
+  img.onerror = () => { inflight[cam] = false; };
+  img.src = q('/snapshot.jpg?cam=' + cam + '&t=' + Date.now());
+}
+function preview() { ['cam', 'overview-cam'].forEach(load); }
+document.getElementById('prev').onclick = preview;
+setInterval(() => { if (document.getElementById('live').checked && !document.hidden) preview(); }, 6000);
+document.getElementById('addb').onclick = () => {
+  const d = document.getElementById('nd'); post('/add', { label: document.getElementById('nl').value, desc: d.value }).then(() => { d.value=''; tick(); });
+};
+tick(); preview(); setInterval(tick, 2000);
+</script>
+</body>
+</html>

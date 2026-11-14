@@ -11,3 +11,6 @@ results/
 lightning_logs/
 *.ckpt
 openvino_cache/
+
+# local handoff notes (internal IDs)
+HANDOFF.md
